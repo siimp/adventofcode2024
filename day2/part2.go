@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-    file, _ := os.Open("example2.txt")
-    // file, _ := os.Open("input.txt")
+    // file, _ := os.Open("example2.txt")
+    file, _ := os.Open("input.txt")
     defer file.Close()
 
     reader := bufio.NewReader(file)
@@ -19,40 +19,31 @@ func main() {
     safeReports := 0
     reportsScanned := 0
     for scanner.Scan() {
+        reportsScanned++
         line := scanner.Text()
         numberStrings := strings.Split(line, " ")
+
         numbers := make([]int, len(numberStrings))
         for i, v := range numberStrings {
             numberValue, _ := strconv.Atoi(v)
             numbers[i] = numberValue
         }
 
-        isSafe, unsafeIndex := isSafeNumbers(numbers)
-        if isSafe {
-            // fmt.Printf("report %d is safe\n", reportsScanned)
+        safe := isSafe(numbers)
+        if safe {
             safeReports++
-        } else {
-            // problem dampener
-            // try removing index and index+1
-            var dampenedNumbers []int
-            dampenedNumbers = getDampenedNumbers(numbers, unsafeIndex)
-            isSafeDampened, dampenedUnsafeIndex := isSafeNumbers(dampenedNumbers)
-            if isSafeDampened {
-                fmt.Printf("report %d is safe (problem dampened via index %d)\n", reportsScanned, unsafeIndex)
-                safeReports++
-            } else {
-                dampenedNumbers = getDampenedNumbers(numbers, unsafeIndex + 1)
-                isSafeDampened, dampenedUnsafeIndex = isSafeNumbers(dampenedNumbers)
-                if isSafeDampened {
-                    fmt.Printf("report %d is safe (problem dampened via index %d)\n", reportsScanned, unsafeIndex)
-                    safeReports++
-                } else {
-                    fmt.Printf("report %d is unsafe %d. index=%d; %d dampenedUnsafeIndex=%d\n", reportsScanned, numbers, unsafeIndex, dampenedNumbers, dampenedUnsafeIndex)
-                }
-            }
+            continue
         }
 
-        reportsScanned++
+        // brute force: try each combination
+        for index := range len(numbers) {
+            dampenedNumbers := getDampenedNumbers(numbers, index)
+            safe := isSafe(dampenedNumbers)
+            if safe {
+                safeReports++
+                break
+            }
+        }
     }
 
     fmt.Printf("Safe reports: %d of %d", safeReports, reportsScanned)
@@ -69,43 +60,22 @@ func getDampenedNumbers(numbers []int, index int) ([]int) {
     return copyNumbers
 }
 
-func isSafeNumbers(numbers []int) (bool, int) {
+func isSafe(numbers []int) (bool) {
     const max = 3
-    var isIncreasing bool
-    isSafe := true
-    index := -1
-    for i, _ := range numbers {
-        if i == len(numbers) - 1 || !isSafe {
-            break
+    isIncreasing := numbers[0] < numbers[1]
+    for i := range len(numbers) - 1 {
+        if isIncreasing && numbers[i] >= numbers[i + 1] {
+            return false
         }
-        if i == 0 {
-            if numbers[0] == numbers[1] {
-                isSafe = false
-                index = i
-                break
-            }
-            isIncreasing = numbers[0] < numbers[1]
+        if isIncreasing && numbers[i + 1] - numbers[i] > max {
+            return false
         }
-
-        if isIncreasing {
-            if numbers[i] >= numbers[i+1] {
-                isSafe = false
-                index = i
-            } else if numbers[i+1] - numbers[i] > max {
-                isSafe = false
-                index = i
-            }
+        if !isIncreasing && numbers[i] <= numbers[i + 1] {
+            return false
         }
-
-        if !isIncreasing {
-            if numbers[i] <= numbers[i+1] {
-                isSafe = false
-                index = i
-            } else if numbers[i] - numbers[i+1] > max {
-                isSafe = false
-                index = i
-            }
+        if !isIncreasing && numbers[i] - numbers[i + 1]  > max {
+            return false
         }
     }
-    return isSafe, index
+    return true
 }
